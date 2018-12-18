@@ -214,7 +214,7 @@ PUBLIC void APP_vInitialiseNode(void)
 {
     DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_vInitialiseNode*");
 
-    APP_vInitLeds();
+//    APP_vInitLeds();
 
 #ifdef DEEP_SLEEP_ENABLE
     vReloadSleepTimers();
@@ -223,11 +223,11 @@ PUBLIC void APP_vInitialiseNode(void)
     /* Initialise buttons; if a button is held down as the device is reset, delete the device
      * context from flash
      */
-    APP_bButtonInitialise();
+//    APP_bButtonInitialise();
 
     /*In case of a deep sleep device any button wake up would cause a PDM delete , only check for DIO8
      * pressed for deleting the context */
-    vDeletePDMOnButtonPress(APP_BUTTONS_BUTTON_1);
+//    vDeletePDMOnButtonPress(APP_BUTTONS_BUTTON_1);
 	PDM_vDeleteAllDataRecords();
     #ifdef CLD_OTA
         vLoadOTAPersistedData();
@@ -340,13 +340,9 @@ OS_TASK(APP_ZHA_Switch_Task)
     ZPS_tsAfEvent sStackEvent;
     sStackEvent.eType = ZPS_EVENT_NONE;
     sAppEvent.eType = APP_E_EVENT_NONE;
-    /*Collect the application events*/
-    if (OS_eCollectMessage(APP_msgEvents, &sAppEvent) == OS_E_OK)
-    {
-
-    }
+	
     /*Collect stack Events */
-    else if ( OS_eCollectMessage(APP_msgZpsEvents, &sStackEvent) == OS_E_OK)
+    if ( OS_eCollectMessage(APP_msgZpsEvents, &sStackEvent) == OS_E_OK)
     {
 
         if(sStackEvent.eType == ZPS_EVENT_ERROR)
@@ -386,7 +382,6 @@ OS_TASK(APP_ZHA_Switch_Task)
             vHandleJoinAndRejoinNWK(&sStackEvent,E_EZ_REJOIN);
             DBG_vPrintf(TRACE_SWITCH_NODE, "In E_REJOIN - Kick off Tick Timer \n");
             OS_eStartSWTimer(APP_TickTimer, ZCL_TICK_TIME, NULL);
-            vHandleAppEvent( sAppEvent );
             break;
 
         case E_RUNNING:
@@ -433,7 +428,6 @@ OS_TASK(APP_ZHA_Switch_Task)
                     }
                 }
             #endif
-            vHandleAppEvent( sAppEvent );
             vEZ_EZModeNWKFindAndBindHandler(&sStackEvent);
             break;
         default:
@@ -1367,7 +1361,7 @@ PUBLIC void vStopAllTimers(void)
 {
     vStopTimer(APP_PollTimer);
     vStopTimer(APP_CommissionTimer);
-    vStopTimer(APP_ButtonsScanTimer);
+//    vStopTimer(APP_ButtonsScanTimer);
     vStopTimer(APP_TickTimer);
     vStopTimer(APP_JoinTimer);
     vStopTimer(APP_BackOffTimer);

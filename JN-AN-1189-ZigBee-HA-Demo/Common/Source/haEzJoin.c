@@ -50,6 +50,9 @@
 #include "os_gen.h"
 #include "appZpsBeaconHandler.h"
 #include "rnd_pub.h"
+#include "Pdum_gen.h"
+#include "hh_doorlock.h"
+#include "zcl.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -1032,6 +1035,23 @@ PRIVATE void vHandleDiscovery(ZPS_tsAfEvent *pZPSevent)
     }
 }
 
+PRIVATE teZCL_Status eReportAttribute()
+{
+	tsZCL_Address sAddress;
+	PDUM_thAPduInstance hAPduInst;
+	
+	sAddress.eAddressMode = E_ZCL_AM_BROADCAST;
+	sAddress.uAddress.eBroadcastMode = ZPS_E_APL_AF_BROADCAST_ZC_ZR;
+	
+	hAPduInst = PDUM_hAPduAllocateAPduInstance(apduZDP);
+
+    if (hAPduInst == PDUM_INVALID_HANDLE)
+    {
+        DBG_vPrintf(TRACE_EZMODE, "IEEE Address Request - PDUM_INVALID_HANDLE\n");
+		return E_ZCL_FAIL;
+    }
+	return eZCL_ReportAttribute(&sAddress, CLUSTER_ID_HH_DOORLOCK, E_CLD_DOORLOCK_ATTR_ID_ONOFF, 0x01, 0xFF, hAPduInst);
+}
 /****************************************************************************
  *
  * NAME: vHandleJoinedNwk
@@ -1059,6 +1079,7 @@ PRIVATE void vHandleJoinedNwk(void)
     ZPS_eAplAibSetApsUseExtendedPanId(ZPS_u64NwkNibGetEpid( ZPS_pvAplZdoGetNwkHandle()));
 
     ZPS_u16AplZdoLookupAddr(ZPS_psAplAibGetAib()->u64ApsTrustCenterAddress);
+	DBG_vPrintf(TRACE_EZMODE, "Report Attributes, return code:%d\n", eReportAttribute());
 }
 #ifdef SUPPORT_JOIN_ELSE_FORM
 /****************************************************************************
