@@ -194,7 +194,7 @@ PUBLIC void vAppMain(void)
          * suspends CPU operation when the system is idle or puts the device to
          * sleep if there are no activities in progress
          */
-        PWRM_vManagePower();
+        //PWRM_vManagePower();
     }
 }
 

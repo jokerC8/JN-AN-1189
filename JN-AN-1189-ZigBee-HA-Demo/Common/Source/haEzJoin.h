@@ -65,7 +65,7 @@ extern "C" {
 
 /* The time duration between intermediate scan attempts */
 #ifndef DISCOVERY_TIMEOUT_IN_MS
-#define DISCOVERY_TIMEOUT_IN_MS                           	1000
+#define DISCOVERY_TIMEOUT_IN_MS                           	200
 #endif
 
 /* Joining Time out once attempted to join per attempt*/

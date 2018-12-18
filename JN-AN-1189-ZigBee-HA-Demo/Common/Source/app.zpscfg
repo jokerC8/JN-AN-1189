@@ -100,6 +100,7 @@
     <Clusters Name="Time" Id="0x000A"/>
     <Clusters Name="Diagnostics" Id="0x0B05"/>
     <Clusters Name="Metering" Id="0x0702"/>
+    <Clusters Name="HhDoorLock" Id="0xFC00"/>
   </Profiles>
   <Coordinator Name="Coordinator" DiscoveryNeighbourTableSize="8" ActiveNeighbourTableSize="26" RouteDiscoveryTableSize="4" RoutingTableSize="70" BroadcastTransactionTableSize="20" RouteRecordTableSize="1" AddressMapTableSize="10" SecurityMaterialSets="2" MaxNumSimultaneousApsdeReq="5" MaxNumSimultaneousApsdeAckReq="3" MACMutexName="mutexMAC" ZPSMutexName="mutexZPS" FragmentationMaxNumSimulRx="0" FragmentationMaxNumSimulTx="0" DefaultEventMessageName="APP_msgZpsEvents" MACDcfmIndMessage="zps_msgDcfmInd" MACTimeEventMessage="zps_msgTimeEvents" apsNonMemberRadius="2" apsDesignatedCoordinator="true" apsUseInsecureJoin="true" apsMaxWindowSize="8" apsInterframeDelay="10" APSDuplicateTableSize="5" apsSecurityTimeoutPeriod="3000" apsUseExtPANId="0x0000000000000000" InitialNetworkKey="Coordinator->PreconfiguredTCLinkKey" SecurityEnabled="true" MACMlmeDcfmIndMessage="zps_msgMlmeDcfmInd" MACMcpsDcfmIndMessage="zps_msgMcpsDcfmInd" APSPersistenceTime="100" NumAPSMESimulCommands="4" StackProfile="2" InterPAN="false" GreenPowerSupport="false" NwkFcSaveCountBitShift="10" ApsFcSaveCountBitShift="10" PermitJoiningTime="255" ChildTableSize="5">
     <Endpoints Id="0" Enabled="true" ApplicationDeviceId="0" ApplicationDeviceVersion="0" Profile="ZDP" Name="ZDO">
@@ -1785,15 +1786,16 @@
       <InputClusters Cluster="Basic" RxAPDU="DimmerSwitch->apduZCL" Discoverable="true"/>
       <InputClusters Cluster="Groups" RxAPDU="DimmerSwitch->apduZCL" Discoverable="false"/>
       <InputClusters Cluster="Identify" RxAPDU="DimmerSwitch->apduZCL" Discoverable="true"/>
-      <InputClusters Cluster="OnOff" RxAPDU="DimmerSwitch->apduZCL" Discoverable="false"/>
+      <InputClusters Cluster="OnOff" RxAPDU="DimmerSwitch->apduZCL" Discoverable="true"/>
       <InputClusters Cluster="LevelControl" RxAPDU="DimmerSwitch->apduZCL" Discoverable="false"/>
       <InputClusters Cluster="Scenes" RxAPDU="DimmerSwitch->apduZCL" Discoverable="false"/>
       <InputClusters Cluster="Default" RxAPDU="DimmerSwitch->apduZCL" Discoverable="false"/>
       <InputClusters Cluster="OTA" RxAPDU="DimmerSwitch->apduZCL" Discoverable="false"/>
+      <InputClusters Cluster="HhDoorLock" RxAPDU="DimmerSwitch->apduZCL" Discoverable="true"/>
       <OutputClusters Cluster="Basic" TxAPDUs="DimmerSwitch->apduZCL" Discoverable="true"/>
       <OutputClusters Cluster="Groups" TxAPDUs="DimmerSwitch->apduZCL" Discoverable="true"/>
       <OutputClusters Cluster="Identify" TxAPDUs="DimmerSwitch->apduZCL" Discoverable="true"/>
-      <OutputClusters Cluster="OnOff" TxAPDUs="DimmerSwitch->apduZCL" Discoverable="true"/>
+      <OutputClusters Cluster="OnOff" TxAPDUs="DimmerSwitch->apduZCL" Discoverable="false"/>
       <OutputClusters Cluster="LevelControl" TxAPDUs="DimmerSwitch->apduZCL" Discoverable="true"/>
       <OutputClusters Cluster="Scenes" TxAPDUs="DimmerSwitch->apduZCL" Discoverable="true"/>
       <OutputClusters Cluster="OTA" TxAPDUs="DimmerSwitch->apduZCL" Discoverable="true"/>

@@ -143,19 +143,19 @@ endif
 
 ###############################################################################
 
-#CFLAGS += -DNXP_HARDWARE
-#CFLAGS += -DDEBUG_EZMODE
-#CFLAGS += -DDEBUG_ZCL
-#CFLAGS += -DDEBUG_CLD_ONOFF
-#CFLAGS += -DDEBUG_APP_BUTTON
-#CFLAGS += -DDEBUG_START_UP
-#CFLAGS += -DDEBUG_SWITCH_NODE
-#CFLAGS += -DDEBUG_REMOTE_TASK
-#CFLAGS += -DDEBUG_SCAN
-#CFLAGS += -DDEBUG_JOIN
-#CFLAGS += -DDEBUG_COMMISSION
-#CFLAGS += -DDEBUG_SWITCH_STATE
-#CFLAGS += -DDEBUG_CIRCULAR_ROUTE
+CFLAGS += -DNXP_HARDWARE
+CFLAGS += -DDEBUG_EZMODE
+CFLAGS += -DDEBUG_ZCL
+CFLAGS += -DDEBUG_CLD_ONOFF
+CFLAGS += -DDEBUG_APP_BUTTON
+CFLAGS += -DDEBUG_START_UP
+CFLAGS += -DDEBUG_SWITCH_NODE
+CFLAGS += -DDEBUG_REMOTE_TASK
+CFLAGS += -DDEBUG_SCAN
+CFLAGS += -DDEBUG_JOIN
+CFLAGS += -DDEBUG_COMMISSION
+CFLAGS += -DDEBUG_SWITCH_STATE
+CFLAGS += -DDEBUG_CIRCULAR_ROUTE
 CFLAGS += -DOTA_DEMO_BUILD=TRUE
 ###############################################################################
 
@@ -163,7 +163,8 @@ CFLAGS += -DOTA_DEMO_BUILD=TRUE
 # Path definitions
 
 # Use if application directory contains multiple targets
-SDK_BASE_DIR        = $(abspath ../../../../sdk/$(JENNIC_SDK))
+#SDK_BASE_DIR        = $(abspath ../../../../sdk/$(JENNIC_SDK))
+SDK_BASE_DIR        = $(abspath ../../../../../../NXP/bstudio_nxp/sdk/$(JENNIC_SDK))
 APP_BASE            = $(abspath ../..)
 APP_BLD_DIR         = $(APP_BASE)/Common_Switch/Build
 APP_SRC_DIR         = $(APP_BASE)/Common_Switch/Source

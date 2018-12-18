@@ -228,7 +228,7 @@ PUBLIC void APP_vInitialiseNode(void)
     /*In case of a deep sleep device any button wake up would cause a PDM delete , only check for DIO8
      * pressed for deleting the context */
     vDeletePDMOnButtonPress(APP_BUTTONS_BUTTON_1);
-
+	PDM_vDeleteAllDataRecords();
     #ifdef CLD_OTA
         vLoadOTAPersistedData();
     #endif
@@ -679,6 +679,7 @@ PUBLIC bool bWatingToSleep(void)
  ****************************************************************************/
 PUBLIC void vUpdateKeepAliveTimer(void)
 {
+#if 0
     te_SwitchState eSwitchState = eGetSwitchState();
 
     if( (eSwitchState == LIGHT_CONTROL_MODE ) || (eSwitchState == INDIVIDUAL_CONTROL_MODE ) )
@@ -736,6 +737,7 @@ PUBLIC void vUpdateKeepAliveTimer(void)
         vReloadSleepTimers();
 
     }
+#endif
 }
 #endif
 

@@ -95,6 +95,8 @@
     #define TRACE_SWITCH_TASK   FALSE
 #endif
 
+uint8 onCommand[] = {0xFF, 0x55, 0x0E, 0x0A, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xc6};
+uint8 offCommand[] = {0xFF, 0x55, 0x0E, 0x0A, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xc5};
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -366,7 +368,26 @@ PRIVATE void APP_ZCL_cbEndpointCallback(tsZCL_CallBackEvent *psEvent)
                 case 0x1000:
                     DBG_vPrintf(TRACE_ZCL, "\n    - for 0x1000");
                     break;
-
+				case GENERAL_CLUSTER_ID_ONOFF:{
+					tsCLD_OnOffCallBackMessage *psMessage = (tsCLD_OnOffCallBackMessage*)psEvent->uMessage.sClusterCustomMessage.pvCustomData;
+					DBG_vPrintf(TRACE_ZCL, "\nHaHa,I am OnOffCommand,Command:%d\n", psMessage->u8CommandId);
+					switch(psMessage->u8CommandId) {
+						case 0x00:
+							u16AHI_UartBlockWriteData(E_AHI_UART_0, offCommand, sizeof(offCommand));
+							break;
+						case 0x01:
+							u16AHI_UartBlockWriteData(E_AHI_UART_0, onCommand, sizeof(onCommand));
+							break;
+						case 0x02:
+							break;
+						default:break;
+					}
+					break;
+				}
+				case 0XFC00:{
+					tsCLD_OnOffCallBackMessage *psMessage = (tsCLD_OnOffCallBackMessage*)psEvent->uMessage.sClusterCustomMessage.pvCustomData;
+					DBG_vPrintf(TRACE_ZCL, "\nHaHa,I am HhDoorLock,Command:%d\n", psMessage->u8CommandId);
+					break;}
                 default:
                     DBG_vPrintf(TRACE_ZCL, "- for unknown cluster %d\r\n", psEvent->uMessage.sClusterCustomMessage.u16ClusterId);
                     break;
