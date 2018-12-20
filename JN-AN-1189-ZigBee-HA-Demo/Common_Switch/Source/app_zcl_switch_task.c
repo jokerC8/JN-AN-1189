@@ -153,7 +153,7 @@ PUBLIC void APP_ZCL_vInitialise(void)
     }
 
     DBG_vPrintf(TRACE_SWITCH_TASK, "Chan Mask %08x\n", ZPS_psAplAibGetAib()->apsChannelMask);
-
+	vAPP_ZCL_DeviceSpecific_Init();
     OS_eStartSWTimer(APP_TickTimer, ZCL_TICK_TIME, NULL);
 }
 

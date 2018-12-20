@@ -48,7 +48,7 @@ HW_VERSION                	?= 1
 # Attrib: 0x0004 (String - 32 bytes max)
 MANUFACTURER_NAME         	?= NXP
 # Attrib: 0x0005 (String - 32 bytes max)
-MODEL_ID                  	?= DIMMER_SW
+MODEL_ID                  	?= Hh.DoorLock
 # Attrib: 0x0006 (String - 16 bytes max)
 DATE_CODE                 	?= 10-31-2014
 
