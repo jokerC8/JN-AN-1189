@@ -94,9 +94,10 @@
 #else
     #define TRACE_SWITCH_TASK   FALSE
 #endif
+uint8 offCommand[] = {0xFF, 0x55, 0x0E, 0x0A, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xc6};
+uint8 onCommand[] = {0xFF, 0x55, 0x0E, 0x0A, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xc5};
+uint8 wakeupCommand[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-uint8 onCommand[] = {0xFF, 0x55, 0x0E, 0x0A, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xc6};
-uint8 offCommand[] = {0xFF, 0x55, 0x0E, 0x0A, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xc5};
 /****************************************************************************/
 /***        Type Definitions                                              ***/
 /****************************************************************************/
@@ -139,14 +140,14 @@ PUBLIC void APP_ZCL_vInitialise(void)
     teZCL_Status eZCL_Status;
 
     /* Initialise ZHA */
-    eZCL_Status = eHA_Initialise(&APP_ZCL_cbGeneralCallback, apduZCL);
+    eZCL_Status = eHA_Initialise(APP_ZCL_cbGeneralCallback, apduZCL);
     if (eZCL_Status != E_ZCL_SUCCESS)
     {
         DBG_vPrintf(TRACE_ZCL, "Error: eHA_Initialise returned %d\r\n", eZCL_Status);
     }
 
     /* Register ZHA EndPoint */
-    eZCL_Status = eApp_HA_RegisterEndpoint(&APP_ZCL_cbEndpointCallback);
+    eZCL_Status = eApp_HA_RegisterEndpoint(APP_ZCL_cbEndpointCallback);
     if (eZCL_Status != E_ZCL_SUCCESS)
     {
             DBG_vPrintf(TRACE_SWITCH_TASK, "Error: eApp_HA_RegisterEndpoint:%d\r\n", eZCL_Status);
@@ -370,13 +371,15 @@ PRIVATE void APP_ZCL_cbEndpointCallback(tsZCL_CallBackEvent *psEvent)
                     break;
 				case GENERAL_CLUSTER_ID_ONOFF:{
 					tsCLD_OnOffCallBackMessage *psMessage = (tsCLD_OnOffCallBackMessage*)psEvent->uMessage.sClusterCustomMessage.pvCustomData;
-					DBG_vPrintf(TRACE_ZCL, "\nHaHa,I am OnOffCommand,Command:%d\n", psMessage->u8CommandId);
+					DBG_vPrintf(TRACE_ZCL, "\n\nOnOffCommand,Command:%d\n", psMessage->u8CommandId);
 					switch(psMessage->u8CommandId) {
 						case 0x00:
-							u16AHI_UartBlockWriteData(E_AHI_UART_0, offCommand, sizeof(offCommand));
+							u16AHI_UartBlockWriteData(E_AHI_UART_1, wakeupCommand, sizeof(wakeupCommand));
+							u16AHI_UartBlockWriteData(E_AHI_UART_1, offCommand, sizeof(offCommand));
 							break;
 						case 0x01:
-							u16AHI_UartBlockWriteData(E_AHI_UART_0, onCommand, sizeof(onCommand));
+							u16AHI_UartBlockWriteData(E_AHI_UART_1, wakeupCommand, sizeof(wakeupCommand));
+							u16AHI_UartBlockWriteData(E_AHI_UART_1, onCommand, sizeof(onCommand));
 							break;
 						case 0x02:
 							break;
@@ -386,7 +389,17 @@ PRIVATE void APP_ZCL_cbEndpointCallback(tsZCL_CallBackEvent *psEvent)
 				}
 				case 0XFC00:{
 					tsCLD_OnOffCallBackMessage *psMessage = (tsCLD_OnOffCallBackMessage*)psEvent->uMessage.sClusterCustomMessage.pvCustomData;
-					DBG_vPrintf(TRACE_ZCL, "\nHaHa,I am HhDoorLock,Command:%d\n", psMessage->u8CommandId);
+					DBG_vPrintf(TRACE_ZCL, "\n\nHhDoorLock,Command:%d\n", psMessage->u8CommandId);
+					switch (psMessage->u8CommandId) {
+						case 0x01:
+							break;
+						case 0x02:
+							break;
+						case 0x03:
+							break;
+						case 0x04:
+							break;
+					}
 					break;}
                 default:
                     DBG_vPrintf(TRACE_ZCL, "- for unknown cluster %d\r\n", psEvent->uMessage.sClusterCustomMessage.u16ClusterId);

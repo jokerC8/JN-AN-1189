@@ -207,7 +207,7 @@ APPSRC += app_switch_state_machine.c
 APPSRC += appZpsBeaconHandler.c
 APPSRC += haEzJoin.c
 APPSRC += haEzFindAndBind.c
-
+APPSRC += uart.c
 ifeq ($(OTA),1)
 APPSRC += app_ota_client.c
 else

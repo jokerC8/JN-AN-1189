@@ -1,14 +1,26 @@
 /*****************************************************************************
  *
- * MODULE:             JN-AN-1189
+ * MODULE:
  *
- * COMPONENT:          app_buttons.h
+ * COMPONENT:
  *
- * DESCRIPTION:        DK4 (DR1175/DR1199) Button Press detection (Interface)
+ * AUTHOR:
+ *
+ * DESCRIPTION:
+ *
+ * $HeadURL: $
+ *
+ * $Revision: $
+ *
+ * $LastChangedBy: $
+ *
+ * $LastChangedDate: $
+ *
+ * $Id:  $
  *
  ****************************************************************************
  *
- * This software is owned by NXP B.V. and/or its supplier and is protected
+ * * This software is owned by NXP B.V. and/or its supplier and is protected
  * under applicable copyright laws. All rights are reserved. We grant You,
  * and any third parties, a license to use this software solely and
  * exclusively on NXP products [NXP Microcontrollers such as JN5168, JN5164,
@@ -29,12 +41,21 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  *
- * Copyright NXP B.V. 2013. All rights reserved
+ * Copyright NXP B.V. 2012. All rights reserved
  *
- ***************************************************************************/
+ ****************************************************************************/
 
-#ifndef APP_BUTTONS_H
-#define APP_BUTTONS_H
+
+#ifndef  UART_H_INCLUDED
+#define  UART_H_INCLUDED
+
+#if defined __cplusplus
+extern "C" {
+#endif
+
+/****************************************************************************/
+/***        Include Files                                                 ***/
+/****************************************************************************/
 
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
@@ -44,57 +65,34 @@
 /***        Type Definitions                                              ***/
 /****************************************************************************/
 
-#if (defined BUTTON_MAP_DR1199)
-
-	typedef enum {
-		APP_E_BUTTONS_BUTTON_1 = 0,
-		APP_E_BUTTONS_BUTTON_SW4,
-		APP_E_BUTTONS_BUTTON_SW3,
-		APP_E_BUTTONS_BUTTON_SW2,
-		APP_E_BUTTONS_BUTTON_SW1
-	} APP_teButtons;
-
-    #define APP_BUTTONS_NUM             (5UL)
-    #define APP_BUTTONS_BUTTON_1        (8)
-	#define APP_BUTTONS_BUTTON_SW4		(1)
-	#define APP_BUTTONS_BUTTON_SW3		(11)
-	#define APP_BUTTONS_BUTTON_SW2		(12)
-	#define APP_UART1_DIO_14            (14)
-	#define APP_UART1_DIO_15            (15)
-	#define APP_BUTTONS_BUTTON_SW1		(17)
-    #define APP_BUTTONS_DIO_MASK        ((1 << APP_BUTTONS_BUTTON_1)|(1 << APP_BUTTONS_BUTTON_SW4) | (1 << APP_BUTTONS_BUTTON_SW3) | (1 << APP_BUTTONS_BUTTON_SW2) | (1 << APP_BUTTONS_BUTTON_SW1))
-	#define APP_BUTTONS_DIO_MASK_FOR_DEEP_SLEEP        ((1 << APP_BUTTONS_BUTTON_SW4) | (1 << APP_BUTTONS_BUTTON_SW3) | (1 << APP_BUTTONS_BUTTON_SW2) | (1 << APP_BUTTONS_BUTTON_SW1))
-
-	#define APP_DIO_WAKEUP_MASK (1 << APP_UART1_DIO_14 | 1 << APP_UART1_DIO_15)
-#else
-	typedef enum {
-		APP_E_BUTTONS_BUTTON_1
-	} APP_teButtons;
-
-    #define APP_BUTTONS_NUM             (1UL)
-    #define APP_BUTTONS_BUTTON_1        (8)
-    #define APP_BUTTONS_DIO_MASK        (1 << APP_BUTTONS_BUTTON_1)
-#endif
-
-typedef enum {
-	E_INTERRUPT_UNKNOWN,
-	E_INTERRUPT_BUTTON,
-	E_INTERRUPT_WAKE_TIMER_EXPIRY
-} teInterruptType;
-
 /****************************************************************************/
 /***        Exported Functions                                            ***/
 /****************************************************************************/
-PUBLIC bool_t APP_bButtonInitialise(void);
-extern PUBLIC void vManageWakeUponSysControlISR(teInterruptType eInterruptType);
-extern PUBLIC void vCbSystemControllerOTAVoltageCheck(uint32 u32DeviceId, uint32 u32ItemBitmap);
+
+PUBLIC void UART_vInit(void);
+PUBLIC void UART_vTxChar(uint8 u8TxChar);
+PUBLIC bool_t UART_bTxReady(void);
+PUBLIC void UART_vRtsStartFlow(void);
+PUBLIC void UART_vRtsStopFlow(void);
+PUBLIC void UART_vSetTxInterrupt(bool_t bState);
+PUBLIC void UART_vSetBaudRate(uint32 u32BaudRate);
+PUBLIC bool_t bPutChar(uint8 u8TxByte);
+PUBLIC void vUartClear(uint8 u8Uart);
+PUBLIC void vUartFlush(uint8 u8Uart);
+PUBLIC void UART_vOverrideInterrupt(bool_t bState);
+PUBLIC bool_t UART_bGetRxData(uint8* pu8Byte);
+/****************************************************************************/
+/***        Exported Variables                                            ***/
+/****************************************************************************/
+
+#if defined __cplusplus
+}
+#endif
+
+#endif  /* UART_H_INCLUDED */
 
 /****************************************************************************/
-/***        External Variables                                            ***/
+/***        END OF FILE                                                   ***/
 /****************************************************************************/
 
-/****************************************************************************/
-/****************************************************************************/
-/****************************************************************************/
 
-#endif /*APP_BUTTONS_H*/

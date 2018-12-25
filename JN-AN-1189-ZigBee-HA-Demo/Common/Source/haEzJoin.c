@@ -52,7 +52,6 @@
 #include "rnd_pub.h"
 #include "Pdum_gen.h"
 #include "basic.h"
-#include "zcl.h"
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -1035,24 +1034,27 @@ PRIVATE void vHandleDiscovery(ZPS_tsAfEvent *pZPSevent)
     }
 }
 
-PRIVATE teZCL_Status eReportAttribute()
+PRIVATE teZCL_Status eReportAttribute(
+                    uint16                      u16ClusterID,
+                    uint16                      u16AttributeID,
+                    uint8                       u8SrcEndPoint,
+                    uint8                       u8DestEndPoint)
 {
 	tsZCL_Address sAddress;
 	PDUM_thAPduInstance hAPduInst;
-	
 	sAddress.eAddressMode = E_ZCL_AM_SHORT;
 	sAddress.uAddress.u16DestinationAddress = 0x0000;
-	
-	hAPduInst = PDUM_hAPduAllocateAPduInstance(apduZDP);
+
+    hAPduInst = PDUM_hAPduAllocateAPduInstance(apduZDP);
 
     if (hAPduInst == PDUM_INVALID_HANDLE)
     {
         DBG_vPrintf(TRACE_EZMODE, "IEEE Address Request - PDUM_INVALID_HANDLE\n");
-		return E_ZCL_FAIL;
     }
 
-	return eZCL_ReportAttribute(&sAddress, GENERAL_CLUSTER_ID_BASIC, E_CLD_BAS_ATTR_ID_MODEL_IDENTIFIER, 0x01, 0x01, hAPduInst);
+	return eZCL_ReportAttribute(&sAddress, u16ClusterID, u16AttributeID, u8SrcEndPoint, u8DestEndPoint, hAPduInst);
 }
+
 /****************************************************************************
  *
  * NAME: vHandleJoinedNwk
@@ -1080,7 +1082,8 @@ PRIVATE void vHandleJoinedNwk(void)
     ZPS_eAplAibSetApsUseExtendedPanId(ZPS_u64NwkNibGetEpid( ZPS_pvAplZdoGetNwkHandle()));
 
     ZPS_u16AplZdoLookupAddr(ZPS_psAplAibGetAib()->u64ApsTrustCenterAddress);
-	DBG_vPrintf(TRACE_EZMODE, "Report Attributes, return code:%d\n", eReportAttribute());
+
+	eReportAttribute(GENERAL_CLUSTER_ID_BASIC, E_CLD_BAS_ATTR_ID_MODEL_IDENTIFIER, 0x01, 0x01);
 }
 #ifdef SUPPORT_JOIN_ELSE_FORM
 /****************************************************************************

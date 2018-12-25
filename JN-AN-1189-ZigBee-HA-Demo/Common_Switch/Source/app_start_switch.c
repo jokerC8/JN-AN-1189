@@ -55,6 +55,8 @@
 #include "app_buttons.h"
 #include <string.h>
 #include "app_exceptions.h"
+#include "AppHardwareApi_JN516x.h"
+
 #ifdef CLD_OTA
     #include "app_ota_client.h"
 #endif
@@ -85,7 +87,7 @@ PRIVATE void vInitialiseApp(void);
         #define  vSetUpWakeUpConditionsForDeepSleep()   vSetUpWakeUpConditions(TRUE)
     #endif
 #endif
-
+PRIVATE void vInitUart(uint8 u8Uart, uint16 u16Baud);
 PRIVATE void vfExtendedStatusCallBack (ZPS_teExtendedStatus eExtendedStatus);
 /****************************************************************************/
 /***        Exported Variables                                            ***/
@@ -123,6 +125,8 @@ static PWRM_DECLARE_CALLBACK_DESCRIPTOR(Wakeup);
  * void
  *
  ****************************************************************************/
+uint8 txBuff[127];
+uint8 rxBuff[127];
 PUBLIC void vAppMain(void)
 {
     #if JENNIC_CHIP_FAMILY == JN516x
@@ -143,8 +147,7 @@ PUBLIC void vAppMain(void)
      * */
     DBG_vUartInit(DBG_E_UART_0, DBG_E_UART_BAUD_RATE_115200);
     DBG_vPrintf(TRACE_START, "\n\nAPP: Switch Power Up");
-
-
+	vInitUart(E_AHI_UART_1, E_AHI_UART_RATE_9600);
     /*
      * Initialise the stack overflow exception to trigger if the end of the
      * stack is reached. See the linker command file to adjust the allocated
@@ -194,10 +197,26 @@ PUBLIC void vAppMain(void)
          * suspends CPU operation when the system is idle or puts the device to
          * sleep if there are no activities in progress
          */
-        //PWRM_vManagePower();
+        PWRM_vManagePower();
     }
 }
 
+void vInitUart(uint8 u8Uart, uint16 u16Baud)
+{
+	/* Enable Uart1 */
+	bAHI_UartEnable(u8Uart, txBuff, sizeof(txBuff), rxBuff, sizeof(rxBuff));
+
+	/* Reset send/receive fifo */
+	vAHI_UartReset(u8Uart, TRUE, TRUE);
+	vAHI_UartReset(u8Uart, FALSE, FALSE);
+
+	/* Set BaudRate */
+	vAHI_UartSetBaudRate(u8Uart, u16Baud);
+	vAHI_UartSetControl(u8Uart, FALSE, FALSE, E_AHI_UART_WORD_LEN_8, TRUE, FALSE); /* [I SP001222_P1 279] */
+	
+	/* Enable interrupt */
+	vAHI_UartSetInterrupt(u8Uart, FALSE, FALSE, FALSE, TRUE, E_AHI_UART_FIFO_LEVEL_1);
+}
 
 /****************************************************************************
  *
@@ -277,6 +296,15 @@ PRIVATE void vInitialiseApp(void)
  ****************************************************************************/
 PRIVATE void vSetUpWakeUpConditions(bool_t bDeepSleep)
 {
+	/* set DIO14 DIO15 as input */
+	vAHI_DioSetDirection(APP_DIO_WAKEUP_MASK, 0);
+
+	/* config rising interrupt */
+	vAHI_DioWakeEdge(APP_DIO_WAKEUP_MASK, 0);
+
+	/* enable wake */
+	vAHI_DioWakeEnable(APP_DIO_WAKEUP_MASK, 0);
+#if 0
    /*
     * Set the DIO with the right edges for wake up
     * */
@@ -301,6 +329,7 @@ PRIVATE void vSetUpWakeUpConditions(bool_t bDeepSleep)
         vAHI_DioWakeEdge(0,APP_BUTTONS_DIO_MASK);       /* Set the wake up DIO Edge - Falling Edge */
         vAHI_DioWakeEnable(APP_BUTTONS_DIO_MASK,0);     /* Set the Wake up DIO Power Button */
     }
+#endif
 }
 #endif
 
@@ -335,6 +364,7 @@ PWRM_CALLBACK(PreSleep)
     }
     /* Disable UART */
     vAHI_UartDisable(E_AHI_UART_0);
+	vAHI_UartDisable(E_AHI_UART_1);
     /* Set up wake up input */
     #ifdef SLEEP_ENABLE
         #ifdef DEEP_SLEEP_ENABLE
@@ -378,6 +408,8 @@ PWRM_CALLBACK(Wakeup)
     /* Don't use RTS/CTS pins on UART0 as they are used for buttons */
     vAHI_UartSetRTSCTS(E_AHI_UART_0, FALSE);
     DBG_vUartInit(DBG_E_UART_0, DBG_E_UART_BAUD_RATE_115200);
+	
+	vInitUart(E_AHI_UART_1, E_AHI_UART_RATE_9600);
 
     #ifdef CLD_OTA
         #if JENNIC_CHIP==JN5168

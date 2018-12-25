@@ -105,7 +105,6 @@
  * RETURNS: bool
  *
  ****************************************************************************/
-#if 0
 PUBLIC bool_t APP_bButtonInitialise(void)
 {
     /* Set DIO lines to inputs with buttons connected */
@@ -127,7 +126,7 @@ PUBLIC bool_t APP_bButtonInitialise(void)
     }
     return FALSE;
 }
-#endif
+
 /****************************************************************************
  *
  * NAME: vISR_SystemController
@@ -145,14 +144,13 @@ PUBLIC bool_t APP_bButtonInitialise(void)
 OS_ISR(vISR_SystemController)
 {
     teInterruptType eInterruptType = E_INTERRUPT_UNKNOWN;
-	DBG_vPrintf(TRACE_APP_BUTTON, "In vISR_SystemController\n");
-#if 0
+
     /* clear pending DIO changed bits by reading register */
     uint8 u8WakeInt = u8AHI_WakeTimerFiredStatus();
-    uint32 u32IOStatus=u32AHI_DioInterruptStatus();
+    uint32 u32IOStatus = u32AHI_DioInterruptStatus();
 
     DBG_vPrintf(TRACE_APP_BUTTON, "In vISR_SystemController\n");
-
+#if 0
     if( u32IOStatus & APP_BUTTONS_DIO_MASK )
     {
         /* disable edge detection until scan complete */
@@ -160,7 +158,7 @@ OS_ISR(vISR_SystemController)
         OS_eStartSWTimer(APP_ButtonsScanTimer, APP_TIME_MS(10), NULL);
         eInterruptType = E_INTERRUPT_BUTTON;
     }
-
+#endif
     if (u8WakeInt & E_AHI_WAKE_TIMER_MASK_1)
     {
         /* wake timer interrupt got us here */
@@ -168,7 +166,6 @@ OS_ISR(vISR_SystemController)
         eInterruptType = E_INTERRUPT_WAKE_TIMER_EXPIRY;
         PWRM_vWakeInterruptCallback();
     }
-#endif
 #ifdef SLEEP_ENABLE
     vManageWakeUponSysControlISR(eInterruptType);
 #endif
@@ -207,7 +204,7 @@ OS_ISR(vISR_Timer2){}
  * RETURNS:
  *
  ****************************************************************************/
-#if 0
+ #if 0
 OS_TASK(APP_ButtonsScanTask)
 {
     /*
@@ -221,7 +218,7 @@ OS_TASK(APP_ButtonsScanTask)
     unsigned int i;
     uint32 u32DIOState = u32AHI_DioReadInput() & APP_BUTTONS_DIO_MASK;
 
-
+	DBG_vPrintf(TRACE_APP_BUTTON, "\nIn APP_ButtonsScanTask...\n");
     for (i = 0; i < APP_BUTTONS_NUM; i++)
     {
         uint8 u8Button = (uint8) ((u32DIOState >> s_u8ButtonDIOLine[i]) & 1);

@@ -40,6 +40,7 @@
 
 #include <jendefs.h>
 #include <appapi.h>
+#include <string.h>
 #include "os.h"
 #include "os_gen.h"
 #include "pdum_apl.h"
@@ -76,6 +77,8 @@
 #include "haEzFindAndBind.h"
 #include "app_switch_state_machine.h"
 #include "zcl_common.h"
+#include "onoff.h"
+
 #ifdef CLD_OTA
     #include "OTA.h"
     #include "app_ota_client.h"
@@ -85,6 +88,8 @@
 
 #include "PingParent.h"
 #include "appZdpExtraction.h"
+
+uint8 openDoorReportData[] = {0xff, 0x55, 0x08, 0x0a, 0x08, 0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0xe1};
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
@@ -156,7 +161,7 @@ PRIVATE void vSendMatchDesc( uint16);
 
 PRIVATE bool bAddressInTable( uint16 u16AddressToCheck );
 PRIVATE void vClearMatchDescriptorDiscovery( void );
-PRIVATE void vHandleAppEvent( APP_tsEvent sAppEvent );
+//PRIVATE void vHandleAppEvent( APP_tsEvent sAppEvent );
 PRIVATE void vDeletePDMOnButtonPress(uint8 u8ButtonDIO);
 
 PRIVATE bool bIsValidBindingExsisting(uint16 u16ClusterId);
@@ -214,7 +219,7 @@ PUBLIC void APP_vInitialiseNode(void)
 {
     DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_vInitialiseNode*");
 
-//    APP_vInitLeds();
+    APP_vInitLeds();
 
 #ifdef DEEP_SLEEP_ENABLE
     vReloadSleepTimers();
@@ -223,11 +228,11 @@ PUBLIC void APP_vInitialiseNode(void)
     /* Initialise buttons; if a button is held down as the device is reset, delete the device
      * context from flash
      */
-//    APP_bButtonInitialise();
+    APP_bButtonInitialise();
 
     /*In case of a deep sleep device any button wake up would cause a PDM delete , only check for DIO8
      * pressed for deleting the context */
-//    vDeletePDMOnButtonPress(APP_BUTTONS_BUTTON_1);
+    vDeletePDMOnButtonPress(APP_BUTTONS_BUTTON_1);
 	PDM_vDeleteAllDataRecords();
     #ifdef CLD_OTA
         vLoadOTAPersistedData();
@@ -336,11 +341,19 @@ PUBLIC void vStartFastPolling(uint8 u8Seconds)
  ****************************************************************************/
 OS_TASK(APP_ZHA_Switch_Task)
 {
-    APP_tsEvent sAppEvent;
+//    APP_tsEvent sAppEvent;
     ZPS_tsAfEvent sStackEvent;
     sStackEvent.eType = ZPS_EVENT_NONE;
-    sAppEvent.eType = APP_E_EVENT_NONE;
+//    sAppEvent.eType = APP_E_EVENT_NONE;
 	
+	DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_ZHA_Switch_Task... \n");
+#if 0
+    /*Collect the application events*/
+    if (OS_eCollectMessage(APP_msgEvents, &sAppEvent) == OS_E_OK)
+    {
+
+    }
+#endif
     /*Collect stack Events */
     if ( OS_eCollectMessage(APP_msgZpsEvents, &sStackEvent) == OS_E_OK)
     {
@@ -382,6 +395,7 @@ OS_TASK(APP_ZHA_Switch_Task)
             vHandleJoinAndRejoinNWK(&sStackEvent,E_EZ_REJOIN);
             DBG_vPrintf(TRACE_SWITCH_NODE, "In E_REJOIN - Kick off Tick Timer \n");
             OS_eStartSWTimer(APP_TickTimer, ZCL_TICK_TIME, NULL);
+            //vHandleAppEvent( sAppEvent );
             break;
 
         case E_RUNNING:
@@ -428,6 +442,7 @@ OS_TASK(APP_ZHA_Switch_Task)
                     }
                 }
             #endif
+            //vHandleAppEvent( sAppEvent );
             vEZ_EZModeNWKFindAndBindHandler(&sStackEvent);
             break;
         default:
@@ -673,7 +688,6 @@ PUBLIC bool bWatingToSleep(void)
  ****************************************************************************/
 PUBLIC void vUpdateKeepAliveTimer(void)
 {
-#if 0
     te_SwitchState eSwitchState = eGetSwitchState();
 
     if( (eSwitchState == LIGHT_CONTROL_MODE ) || (eSwitchState == INDIVIDUAL_CONTROL_MODE ) )
@@ -689,6 +703,17 @@ PUBLIC void vUpdateKeepAliveTimer(void)
             DBG_vPrintf(TRACE_SWITCH_NODE,"\n Activity %d, KeepAliveTime = %d \n",PWRM_u16GetActivityCount(),u8KeepAliveTime);
 
             #ifdef DEEP_SLEEP_ENABLE
+				if(PWRM_u16GetActivityCount())
+				{
+					DBG_vPrintf(TRACE_SWITCH_NODE,"\n Abort Sleep - Reload timers\n");
+					vReloadSleepTimers();
+				}
+				else
+				{
+					PWRM_teStatus eStatus = PWRM_eScheduleActivity(&sWake, APP_LONG_SLEEP_DURATION_IN_SEC*32000 , vWakeCallBack);
+					DBG_vPrintf(TRACE_SWITCH_NODE,"\nSleep Status = %d, u8KeepAliveTime = %d \n",eStatus,u8KeepAliveTime);
+				}
+#if 0
                 if(u8DeepSleepTime > 0 )
                 {
                     u8DeepSleepTime--;
@@ -711,6 +736,7 @@ PUBLIC void vUpdateKeepAliveTimer(void)
                         PWRM_eFinishActivity();
                     PWRM_vInit(E_AHI_SLEEP_DEEP);
                 }
+#endif
             #else
                 /* The activity counter seems to be still greater than 0 - Go back to be awake, Try again in the next sleep time*/
                 if(PWRM_u16GetActivityCount())
@@ -731,7 +757,6 @@ PUBLIC void vUpdateKeepAliveTimer(void)
         vReloadSleepTimers();
 
     }
-#endif
 }
 #endif
 
@@ -782,6 +807,7 @@ PRIVATE void vDeletePDMOnButtonPress(uint8 u8ButtonDIO)
  * void
  *
  ****************************************************************************/
+ #if 0
 PRIVATE void vHandleAppEvent( APP_tsEvent sAppEvent )
 {
     switch(sAppEvent.eType)
@@ -805,6 +831,7 @@ PRIVATE void vHandleAppEvent( APP_tsEvent sAppEvent )
         break;
     }
 }
+#endif
 /****************************************************************************
  *
  * NAME: vHandleMatchResponses
@@ -1361,7 +1388,7 @@ PUBLIC void vStopAllTimers(void)
 {
     vStopTimer(APP_PollTimer);
     vStopTimer(APP_CommissionTimer);
-//    vStopTimer(APP_ButtonsScanTimer);
+ //   vStopTimer(APP_ButtonsScanTimer);
     vStopTimer(APP_TickTimer);
     vStopTimer(APP_JoinTimer);
     vStopTimer(APP_BackOffTimer);
@@ -1441,6 +1468,7 @@ OS_TASK(APP_PollTask)
 {
     uint32 u32PollPeriod = POLL_TIME;
 
+	DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_PollTask... \n");
 
     if(
     #ifdef SLEEP_ENABLE
@@ -1988,7 +2016,78 @@ OS_TASK(APP_SleepTask)
      */
 }
 
+/****************************************************************************
+ *
+ * NAME: eReportAttribute
+ *
+ * DESCRIPTION:
+ * Report Attribute
+ *
+ * RETURNS:
+ * void
+ *
+ ****************************************************************************/
+PRIVATE teZCL_Status eReportAttribute(
+					uint16						u16ClusterID,
+					uint16						u16AttributeID,
+					uint8						u8SrcEndPoint,
+					uint8						u8DestEndPoint)
+{
+	tsZCL_Address sAddress;
+	PDUM_thAPduInstance hAPduInst;
+	sAddress.eAddressMode = E_ZCL_AM_SHORT;
+	sAddress.uAddress.u16DestinationAddress = 0x0000;
 
+	hAPduInst = PDUM_hAPduAllocateAPduInstance(apduZDP);
+
+	if (hAPduInst == PDUM_INVALID_HANDLE)
+	{
+		DBG_vPrintf(TRACE_SWITCH_NODE, "IEEE Address Request - PDUM_INVALID_HANDLE\n");
+	}
+
+	return eZCL_ReportAttribute(&sAddress, u16ClusterID, u16AttributeID, u8SrcEndPoint, u8DestEndPoint, hAPduInst);
+}
+
+int s_i8RxByte;
+uint8 u8wakeData[] = {0xff, 0x55, 0x08, 0x0a, 0x08, 0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0xe1};
+PRIVATE void vProcessIncomingSerialCommands()
+{
+	int j = 0;
+	static uint16 i = 0;
+	static uint8 u8RecData[127]= {0};
+
+	u8RecData[i++] = s_i8RxByte;
+	
+	if (u8RecData[i - 1] == 0xe1) {
+		
+		/* skip 0x00 */
+		while (0x00 == u8RecData[j]) {j++;}
+		if (!memcmp(&u8RecData[j], u8wakeData, sizeof(u8wakeData))) {
+			eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
+		}		
+		i = 0;
+	}
+	if (i == 127) {i = 0;}
+}
+
+/****************************************************************************
+ *
+ * NAME: APP_taskAtParser
+ *
+ * DESCRIPTION:
+ *
+ *
+ ****************************************************************************/
+OS_TASK(APP_taskAtParser)
+{
+    uint8 u8RxByte;
+    if (OS_E_OK == OS_eCollectMessage(APP_msgSerialRx, &u8RxByte)) {
+		s_i8RxByte = u8RxByte;
+		DBG_vPrintf(TRACE_SWITCH_NODE, "\n0x%02x ",s_i8RxByte);
+		vProcessIncomingSerialCommands();
+    }
+    vAHI_WatchdogRestart();
+}
 
 /****************************************************************************
  *
