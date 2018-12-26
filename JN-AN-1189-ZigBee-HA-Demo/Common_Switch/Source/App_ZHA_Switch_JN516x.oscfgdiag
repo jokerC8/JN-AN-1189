@@ -283,7 +283,7 @@
             <children xmi:type="notation:Node" xmi:id="_V7-lcQfqEemS0ZpTgMu9Ag" visible="true" type="3016" element="_V7-lcAfqEemS0ZpTgMu9Ag">
               <children xmi:type="notation:DecorationNode" xmi:id="_V7-ldAfqEemS0ZpTgMu9Ag" visible="true" type="5031"/>
               <styles xmi:type="notation:DescriptionStyle" xmi:id="_V7-lcgfqEemS0ZpTgMu9Ag" description=""/>
-              <layoutConstraint xmi:type="notation:Bounds" xmi:id="_V7-lcwfqEemS0ZpTgMu9Ag" x="1528" y="311" width="-1" height="-1"/>
+              <layoutConstraint xmi:type="notation:Bounds" xmi:id="_V7-lcwfqEemS0ZpTgMu9Ag" x="1513" y="311" width="-1" height="-1"/>
             </children>
             <children xmi:type="notation:Node" xmi:id="_tkbdcAfqEemS0ZpTgMu9Ag" visible="true" type="3013" element="_tka2YAfqEemS0ZpTgMu9Ag">
               <children xmi:type="notation:DecorationNode" xmi:id="_tkbdcwfqEemS0ZpTgMu9Ag" visible="true" type="5026"/>

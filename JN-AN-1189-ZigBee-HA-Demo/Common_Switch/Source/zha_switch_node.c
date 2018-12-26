@@ -2050,22 +2050,54 @@ PRIVATE teZCL_Status eReportAttribute(
 
 int s_i8RxByte;
 uint8 u8wakeData[] = {0xff, 0x55, 0x08, 0x0a, 0x08, 0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0xe1};
+uint8 u8initData[] = {0xff, 0x55, 0x06, 0x0b, 0x01, 0x00, 0x00, 0x00, 0x02, 0xeb};
 PRIVATE void vProcessIncomingSerialCommands()
 {
-	int j = 0;
+	static bool_t bStartFlag;
 	static uint16 i = 0;
 	static uint8 u8RecData[127]= {0};
 
 	u8RecData[i++] = s_i8RxByte;
-	
-	if (u8RecData[i - 1] == 0xe1) {
-		
-		/* skip 0x00 */
-		while (0x00 == u8RecData[j]) {j++;}
-		if (!memcmp(&u8RecData[j], u8wakeData, sizeof(u8wakeData))) {
-			eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
-		}		
-		i = 0;
+
+	if (0xff == s_i8RxByte) {
+		bStartFlag = TRUE;
+	}
+	if (bStartFlag) {
+		u8RecData[i++] = s_i8RxByte;
+		/* not the right data */
+		if (0x55 != u8RecData[1]) {
+			bStartFlag = FALSE;
+			i = 0;
+			return;
+		}
+	}
+	switch (s_i8RxByte) {
+		case 0xe1:
+			/* door lock is opened, report attribute */
+			if (!memcmp(&u8RecData[0], u8wakeData, sizeof(u8wakeData)) -1) {
+				eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
+			}
+			i = 0;
+			bStartFlag = FALSE;
+			break;
+		case 0xeb:
+			/* door lock is powerd on, send back data */
+			if (!memcmp(&u8RecData[0], u8initData, sizeof(u8initData)) - 1) {
+				u16AHI_UartBlockWriteData(E_AHI_UART_1, u8initData, sizeof(u8initData));
+			}
+			i = 0;
+			bStartFlag = FALSE;
+			break;
+		case 0xcc:
+			/* open door return code 0x00 */
+			if (0x00 == u8RecData[i - 2]) {
+				DBG_vPrintf(TRACE_SWITCH_NODE, "\nDoor is opened,Send attributes\n");
+				eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
+			}
+			i = 0;
+			bStartFlag = FALSE;
+			break;
+		default:break;
 	}
 	if (i == 127) {i = 0;}
 }
