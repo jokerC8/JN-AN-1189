@@ -304,32 +304,6 @@ PRIVATE void vSetUpWakeUpConditions(bool_t bDeepSleep)
 
 	/* enable wake */
 	vAHI_DioWakeEnable(APP_DIO_WAKEUP_MASK, 0);
-#if 0
-   /*
-    * Set the DIO with the right edges for wake up
-    * */
-
-    /*Set the LED to inputs to reduce power consumption */
-    /*the following pins are connected to LEDs hence drive them low*/
-    vGenericLEDSetOutput(1, 0);
-    vGenericLEDSetOutput(2, 0);
-    vGenericLEDSetOutput(4, 0);
-
-    vAHI_DioSetDirection(APP_BUTTONS_DIO_MASK,0);   /* Set as Power Button(DIO0) as Input */
-
-    #ifdef DEEP_SLEEP_ENABLE
-    if(bDeepSleep)
-    {
-        vAHI_DioWakeEdge(0,APP_BUTTONS_DIO_MASK_FOR_DEEP_SLEEP);
-        vAHI_DioWakeEnable(APP_BUTTONS_DIO_MASK_FOR_DEEP_SLEEP,(1<<APP_BUTTONS_BUTTON_1));
-    }
-    else
-    #endif
-    {
-        vAHI_DioWakeEdge(0,APP_BUTTONS_DIO_MASK);       /* Set the wake up DIO Edge - Falling Edge */
-        vAHI_DioWakeEnable(APP_BUTTONS_DIO_MASK,0);     /* Set the Wake up DIO Power Button */
-    }
-#endif
 }
 #endif
 

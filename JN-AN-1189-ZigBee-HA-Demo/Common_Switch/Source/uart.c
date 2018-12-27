@@ -219,7 +219,6 @@ PUBLIC void UART_vSetBaudRate(uint32 u32BaudRate)
 OS_ISR(APP_isrUart)
 {
     unsigned int irq = ((*((volatile uint32 *)(UART_START_ADR + 0x08))) >> 1) & 0x0007;
-    uint8 u8Byte;
     if (irq & E_AHI_UART_INT_RXDATA) {
         uint8 u8Byte = u8AHI_UartReadData(UART);
         OS_ePostMessage(APP_msgSerialRx, &u8Byte);

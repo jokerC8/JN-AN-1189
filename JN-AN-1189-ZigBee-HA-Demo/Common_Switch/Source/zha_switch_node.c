@@ -154,16 +154,12 @@ PRIVATE void vStopTimer(OS_thSWTimer hSwTimer);
         PRIVATE void vActionOnButtonActivationAfterDeepSleep(void);
     #endif
 #endif
-PRIVATE void APP_vInitLeds(void);
 PRIVATE void vSetAddress(tsZCL_Address * psAddress, bool_t bBroadcast, uint16 u16ClusterId);
 
 PRIVATE void vSendMatchDesc( uint16);
 
 PRIVATE bool bAddressInTable( uint16 u16AddressToCheck );
 PRIVATE void vClearMatchDescriptorDiscovery( void );
-//PRIVATE void vHandleAppEvent( APP_tsEvent sAppEvent );
-PRIVATE void vDeletePDMOnButtonPress(uint8 u8ButtonDIO);
-
 PRIVATE bool bIsValidBindingExsisting(uint16 u16ClusterId);
 PRIVATE void vStopStartCommissionTimer( uint32 u32Ticks );
 PRIVATE void vHandleMatchResponses( ZPS_tsAfEvent sStackEvent );
@@ -219,20 +215,10 @@ PUBLIC void APP_vInitialiseNode(void)
 {
     DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_vInitialiseNode*");
 
-    APP_vInitLeds();
-
 #ifdef DEEP_SLEEP_ENABLE
     vReloadSleepTimers();
 #endif
-    /*Initialise the application buttons*/
-    /* Initialise buttons; if a button is held down as the device is reset, delete the device
-     * context from flash
-     */
-    APP_bButtonInitialise();
 
-    /*In case of a deep sleep device any button wake up would cause a PDM delete , only check for DIO8
-     * pressed for deleting the context */
-    vDeletePDMOnButtonPress(APP_BUTTONS_BUTTON_1);
 	PDM_vDeleteAllDataRecords();
     #ifdef CLD_OTA
         vLoadOTAPersistedData();
@@ -762,42 +748,6 @@ PUBLIC void vUpdateKeepAliveTimer(void)
 
 /****************************************************************************
  *
- * NAME: vDeletePDMOnButtonPress
- *
- * DESCRIPTION:
- * PDM context clearing on button press
- *
- * RETURNS:
- * void
- *
- ****************************************************************************/
-PRIVATE void vDeletePDMOnButtonPress(uint8 u8ButtonDIO)
-{
-    bool_t bDeleteRecords = FALSE;
-    uint32 u32Buttons = u32AHI_DioReadInput() & (1 << u8ButtonDIO);
-    if (u32Buttons == 0)
-    {
-        bDeleteRecords = TRUE;
-    }
-    else
-    {
-        bDeleteRecords = FALSE;
-    }
-    /* If required, at this point delete the network context from flash, perhaps upon some condition
-     * For example, check if a button is being held down at reset, and if so request the Persistent
-     * Data Manager to delete all its records:
-     * e.g. bDeleteRecords = vCheckButtons();
-     * Alternatively, always call PDM_vDelete() if context saving is not required.
-     */
-    if(bDeleteRecords)
-    {
-        DBG_vPrintf(TRACE_SWITCH_NODE,"Deleting the PDM\n");
-        PDM_vDeleteAllDataRecords();
-    }
-}
-
-/****************************************************************************
- *
  * NAME: vHandleAppEvent
  *
  * DESCRIPTION:
@@ -949,22 +899,6 @@ OS_TASK(APP_CommissionTimerTask)
         default:
             break;
     }
-}
-
-/****************************************************************************
- *
- * NAME: APP_vInitLeds
- *
- * DESCRIPTION:
- * Initialises LED's
- *
- * RETURNS:
- * void
- *
- ****************************************************************************/
-PRIVATE void APP_vInitLeds(void)
-{
-    vGenericLEDInit();
 }
 
 /****************************************************************************

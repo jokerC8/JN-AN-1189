@@ -69,8 +69,6 @@
 /****************************************************************************/
 
 #if (defined BUTTON_MAP_DR1199)
-    PRIVATE uint8 s_u8ButtonDebounce[APP_BUTTONS_NUM] = { 0xff,0xff,0xff,0xff,0xff };
-    PRIVATE uint8 s_u8ButtonState[APP_BUTTONS_NUM] = { 0,0,0,0,0 };
     PRIVATE const uint8 s_u8ButtonDIOLine[APP_BUTTONS_NUM] =
     {
         APP_BUTTONS_BUTTON_1,
@@ -88,44 +86,6 @@
         APP_BUTTONS_BUTTON_1
     };
 #endif
-
-
-/****************************************************************************/
-/***        Exported Functions                                            ***/
-/****************************************************************************/
-/****************************************************************************
- *
- * NAME: APP_bButtonInitialise
- *
- * DESCRIPTION:
- * Button Initialization
- *
- * PARAMETER: void
- *
- * RETURNS: bool
- *
- ****************************************************************************/
-PUBLIC bool_t APP_bButtonInitialise(void)
-{
-    /* Set DIO lines to inputs with buttons connected */
-    vAHI_DioSetDirection(APP_BUTTONS_DIO_MASK, 0);
-
-    /* Turn on pull-ups for DIO lines with buttons connected */
-    vAHI_DioSetPullup(APP_BUTTONS_DIO_MASK, 0);
-
-    /* Set the edge detection for falling edges */
-    vAHI_DioInterruptEdge(0, APP_BUTTONS_DIO_MASK);
-
-    /* Enable interrupts to occur on selected edge */
-    vAHI_DioInterruptEnable(APP_BUTTONS_DIO_MASK, 0);
-
-    uint32 u32Buttons = u32AHI_DioReadInput() & APP_BUTTONS_DIO_MASK;
-    if (u32Buttons != APP_BUTTONS_DIO_MASK)
-    {
-        return TRUE;
-    }
-    return FALSE;
-}
 
 /****************************************************************************
  *
@@ -147,18 +107,10 @@ OS_ISR(vISR_SystemController)
 
     /* clear pending DIO changed bits by reading register */
     uint8 u8WakeInt = u8AHI_WakeTimerFiredStatus();
-    uint32 u32IOStatus = u32AHI_DioInterruptStatus();
+    u32AHI_DioInterruptStatus();
 
     DBG_vPrintf(TRACE_APP_BUTTON, "In vISR_SystemController\n");
-#if 0
-    if( u32IOStatus & APP_BUTTONS_DIO_MASK )
-    {
-        /* disable edge detection until scan complete */
-        vAHI_DioInterruptEnable(0, APP_BUTTONS_DIO_MASK);
-        OS_eStartSWTimer(APP_ButtonsScanTimer, APP_TIME_MS(10), NULL);
-        eInterruptType = E_INTERRUPT_BUTTON;
-    }
-#endif
+
     if (u8WakeInt & E_AHI_WAKE_TIMER_MASK_1)
     {
         /* wake timer interrupt got us here */
