@@ -150,9 +150,6 @@ PRIVATE void vStopAllTimers(void);
 PRIVATE void vStopTimer(OS_thSWTimer hSwTimer);
 #ifdef SLEEP_ENABLE
     PRIVATE void vLoadKeepAliveTime(uint8 u8TimeInSec);
-    #ifdef DEEP_SLEEP_ENABLE
-        PRIVATE void vActionOnButtonActivationAfterDeepSleep(void);
-    #endif
 #endif
 PRIVATE void vSetAddress(tsZCL_Address * psAddress, bool_t bBroadcast, uint16 u16ClusterId);
 
@@ -174,6 +171,7 @@ PRIVATE bool_t bHandleZdoLeaveRequest(uint8 u8Action, uint64 u64TargetAddr, uint
 PUBLIC PDM_tsRecordDescriptor   sDevicePDDesc;
 PUBLIC tsDeviceDesc             sDeviceDesc;
 PUBLIC uint16                   u16GroupId;
+PUBLIC uint8					u8Counts;
 
 /****************************************************************************/
 /***        Local Variables                                               ***/
@@ -219,18 +217,15 @@ PUBLIC void APP_vInitialiseNode(void)
     vReloadSleepTimers();
 #endif
 
-	PDM_vDeleteAllDataRecords();
-    #ifdef CLD_OTA
-        vLoadOTAPersistedData();
-    #endif
-
+#ifdef CLD_OTA
+    vLoadOTAPersistedData();
+#endif
     /* Restore any application data previously saved to flash */
     uint16 u16ByteRead;
     PDM_eReadDataFromRecord(PDM_ID_APP_REMOTE_CONTROL,
                             &sDeviceDesc,
                             sizeof(tsDeviceDesc),
                             &u16ByteRead);
-
 
     /* Initialise ZBPro stack */
     ZPS_vAplSecSetInitialSecurityState(ZPS_ZDO_PRECONFIGURED_LINK_KEY, (uint8 *)&s_au8LnkKeyArray, 0x00, ZPS_APS_GLOBAL_LINK_KEY);
@@ -258,24 +253,21 @@ PUBLIC void APP_vInitialiseNode(void)
         DBG_vPrintf(TRACE_SWITCH_NODE,"\nThe sNib.sPersist.u8CapabilityInformation = %02x",ZPS_psNwkNibGetHandle( pvNwk)->sPersist.u8CapabilityInformation);
 
         app_vRestartNode();
+		/* Register callback that will handle ZDP (mgmt) leave requests */
+		ZPS_vAplZdoRegisterZdoLeaveActionCallback(bHandleZdoLeaveRequest);
+		OS_eActivateTask(APP_ZHA_Switch_Task);
     }
     else
     {
         app_vStartNodeFactoryNew();
     }
-
-    #ifdef PDM_EEPROM
-        vDisplayPDMUsage();
-    #endif
-
-#ifdef CLD_OTA
-    vAppInitOTA();
+#ifdef PDM_EEPROM
+    vDisplayPDMUsage();
 #endif
 
-       /* Register callback that will handle ZDP (mgmt) leave requests */
-       ZPS_vAplZdoRegisterZdoLeaveActionCallback(bHandleZdoLeaveRequest);
-
-    OS_eActivateTask(APP_ZHA_Switch_Task);
+#ifdef CLD_OTA
+	vAppInitOTA();
+#endif
 }
 /****************************************************************************
  *
@@ -327,19 +319,11 @@ PUBLIC void vStartFastPolling(uint8 u8Seconds)
  ****************************************************************************/
 OS_TASK(APP_ZHA_Switch_Task)
 {
-//    APP_tsEvent sAppEvent;
     ZPS_tsAfEvent sStackEvent;
     sStackEvent.eType = ZPS_EVENT_NONE;
-//    sAppEvent.eType = APP_E_EVENT_NONE;
 	
 	DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_ZHA_Switch_Task... \n");
-#if 0
-    /*Collect the application events*/
-    if (OS_eCollectMessage(APP_msgEvents, &sAppEvent) == OS_E_OK)
-    {
 
-    }
-#endif
     /*Collect stack Events */
     if ( OS_eCollectMessage(APP_msgZpsEvents, &sStackEvent) == OS_E_OK)
     {
@@ -428,7 +412,6 @@ OS_TASK(APP_ZHA_Switch_Task)
                     }
                 }
             #endif
-            //vHandleAppEvent( sAppEvent );
             vEZ_EZModeNWKFindAndBindHandler(&sStackEvent);
             break;
         default:
@@ -537,51 +520,6 @@ PRIVATE void vHandleJoinAndRejoinNWK( ZPS_tsAfEvent *pZPSevent,teEZ_JoinAction e
 }
 #ifdef SLEEP_ENABLE
 #ifdef DEEP_SLEEP_ENABLE
-/****************************************************************************
- *
- * NAME: vActionOnButtonActivationAfterDeepSleep
- *
- * DESCRIPTION:
- * Takes some action based on the button that activated the wake up from deep
- * sleep
- *
- * RETURNS:
- * void
- *
- ****************************************************************************/
-PRIVATE void vActionOnButtonActivationAfterDeepSleep(void)
-{
-
-    APP_tsEvent sButton;
-    uint32 u32DIOState = u32AHI_DioReadInput();
-    sButton.eType = APP_E_EVENT_NONE;
-    sButton.uEvent.sButton.u32DIOState = u32DIOState;
-
-    if ( 0 == (u32DIOState & ON) )
-    {
-        sButton.uEvent.sButton.u8Button=ON_PRESSED;
-        sButton.eType = APP_E_EVENT_BUTTON_DOWN;
-    }
-    else if ( 0 == (u32DIOState & OFF) )
-    {
-        sButton.uEvent.sButton.u8Button=OFF_PRESSED;
-        sButton.eType = APP_E_EVENT_BUTTON_DOWN;
-    }
-    else if ( 0 == (u32DIOState & UP) )
-    {
-        sButton.uEvent.sButton.u8Button=UP_PRESSED;
-        sButton.eType = APP_E_EVENT_BUTTON_DOWN;
-    }
-    else if ( 0 == (u32DIOState & DOWN))
-    {
-        sButton.uEvent.sButton.u8Button=DOWN_PRESSED;
-        sButton.eType = APP_E_EVENT_BUTTON_DOWN;
-    }
-
-    vApp_ProcessKeyCombination(sButton);
-
-}
-
 /****************************************************************************
  *
  * NAME: vLoadDeepSleepTimer
@@ -1430,7 +1368,19 @@ OS_TASK(APP_PollTask)
         {
             DBG_vPrintf(TRACE_SWITCH_NODE, "\nPoll Failed \n", u8PStatus );
         }
-    }
+    }else if(!bWatingToSleep()) {
+		u8Counts++;
+		DBG_vPrintf(TRACE_SWITCH_NODE, "\nu8Counts=%d\n", u8Counts);
+		OS_eStopSWTimer(APP_PollTimer);
+		OS_eStartSWTimer(APP_PollTimer, POLL_TIME, NULL);
+		if (200 == u8Counts) {
+			u8Counts = 0;
+			vStopAllTimers();
+            while (PWRM_u16GetActivityCount())
+                PWRM_eFinishActivity();
+            PWRM_vInit(E_AHI_SLEEP_DEEP);
+		}
+	}
 }
 
 /****************************************************************************
@@ -1899,12 +1849,6 @@ PRIVATE void app_vRestartNode (void)
     u16GroupId = thisNib->sPersist.u16NwkAddr;
     /* Start 1 seconds polling */
     OS_eStartSWTimer(APP_PollTimer,POLL_TIME, NULL);
-    /*If it is coming out of deep sleep take action on button press */
-    #ifdef SLEEP_ENABLE
-        #ifdef DEEP_SLEEP_ENABLE
-            vActionOnButtonActivationAfterDeepSleep();
-        #endif
-    #endif
 
     /*Rejoin NWK when coming from reset.*/
     ZPS_eAplZdoRejoinNetwork(FALSE);
@@ -1928,7 +1872,7 @@ PRIVATE void app_vStartNodeFactoryNew(void)
 
     /* Stay awake for joining */
     DBG_vPrintf(TRACE_SWITCH_NODE, "\nFactory New Start");
-    vStartStopTimer( APP_JoinTimer, APP_TIME_MS(1000),(uint8*)&(sDeviceDesc.eNodeState),E_STARTUP );
+	vStartStopTimer( APP_JoinTimer, APP_TIME_MS(1000),(uint8*)&(sDeviceDesc.eNodeState),E_STARTUP );
 }
 
 /****************************************************************************
@@ -1985,13 +1929,14 @@ PRIVATE teZCL_Status eReportAttribute(
 int s_i8RxByte;
 uint8 u8wakeData[] = {0xff, 0x55, 0x08, 0x0a, 0x08, 0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0xe1};
 uint8 u8initData[] = {0xff, 0x55, 0x06, 0x0b, 0x01, 0x00, 0x00, 0x00, 0x02, 0xeb};
+uint8 u8StartJoinData[] = {0xff, 0x55, 0x07, 0x0b, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01, 0xe9};
+uint8 u8StartJoinResponData[] = {0xff, 0x55, 0x0c, 0x0b, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0xe4};
+
 PRIVATE void vProcessIncomingSerialCommands()
 {
 	static bool_t bStartFlag;
 	static uint16 i = 0;
 	static uint8 u8RecData[127]= {0};
-
-	u8RecData[i++] = s_i8RxByte;
 
 	if (0xff == s_i8RxByte) {
 		bStartFlag = TRUE;
@@ -2006,31 +1951,48 @@ PRIVATE void vProcessIncomingSerialCommands()
 		}
 	}
 	switch (s_i8RxByte) {
-		case 0xe1:
+		case 0xe3:
 			/* door lock is opened, report attribute */
+			DBG_vPrintf(TRACE_SWITCH_NODE, "\nSomeone Open The Door, Report Attribute\n");
 			if (!memcmp(&u8RecData[0], u8wakeData, sizeof(u8wakeData)) -1) {
-				eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
+				if (sDeviceDesc.eNodeState == E_RUNNING) {
+					eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
+				}
 			}
 			i = 0;
 			bStartFlag = FALSE;
 			break;
 		case 0xeb:
 			/* door lock is powerd on, send back data */
+			DBG_vPrintf(TRACE_SWITCH_NODE, "\nDoor Lock Powerd On, Send init data back to lock\n");
 			if (!memcmp(&u8RecData[0], u8initData, sizeof(u8initData)) - 1) {
 				u16AHI_UartBlockWriteData(E_AHI_UART_1, u8initData, sizeof(u8initData));
 			}
 			i = 0;
 			bStartFlag = FALSE;
 			break;
-		case 0xcc:
+		case 0xce:
 			/* open door return code 0x00 */
 			if (0x00 == u8RecData[i - 2]) {
 				DBG_vPrintf(TRACE_SWITCH_NODE, "\nDoor is opened,Send attributes\n");
-				eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
+				if (sDeviceDesc.eNodeState == E_RUNNING) {
+					eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
+				}
 			}
 			i = 0;
 			bStartFlag = FALSE;
 			break;
+		case 0xe9:
+		   /* start join */
+		   if (!memcmp(&u8RecData[0], u8StartJoinData, sizeof(u8StartJoinData)) - 1) {
+				DBG_vPrintf(TRACE_SWITCH_NODE, "\nStart Join\n");
+				u16AHI_UartBlockWriteData(E_AHI_UART_1, u8StartJoinResponData, sizeof(u8StartJoinResponData));
+				PDM_vDeleteAllDataRecords();
+				vAHI_SwReset();
+		   }
+		   i = 0;
+		   bStartFlag = FALSE;
+		   break;
 		default:break;
 	}
 	if (i == 127) {i = 0;}

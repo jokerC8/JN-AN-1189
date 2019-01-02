@@ -311,7 +311,6 @@ PUBLIC ZPS_teStatus eEZ_UpdateEZState(teEZ_State eEZState)
     if (sEZModeData.u8EZSetUpState == E_EZ_START )
     {
         /*If the State is start then start the Timers*/
-        OS_eStartSWTimer(APP_JoinTimer,APP_TIME_MS(3000),NULL);
         OS_eStartSWTimer(APP_BackOffTimer,APP_TIME_MS(60000),NULL);
     }
     else if (sEZModeData.u8EZSetUpState == E_EZ_DEVICE_IN_NETWORK )
