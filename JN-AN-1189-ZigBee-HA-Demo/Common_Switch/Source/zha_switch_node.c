@@ -164,12 +164,15 @@ PRIVATE void vHandleJoinAndRejoinNWK( ZPS_tsAfEvent *pZPSevent,teEZ_JoinAction e
 PRIVATE void app_vRestartNode (void);
 PRIVATE void app_vStartNodeFactoryNew(void);
 PRIVATE bool_t bHandleZdoLeaveRequest(uint8 u8Action, uint64 u64TargetAddr, uint8 u8Flags);
+
+PRIVATE void vGotoDeepSleep();
 /****************************************************************************/
 /***        Exported Variables                                            ***/
 /****************************************************************************/
 
 PUBLIC PDM_tsRecordDescriptor   sDevicePDDesc;
 PUBLIC tsDeviceDesc             sDeviceDesc;
+PUBLIC tsDeviceDesc             sDeviceScanDesc;
 PUBLIC uint16                   u16GroupId;
 PUBLIC uint8					u8Counts;
 
@@ -211,63 +214,8 @@ PRIVATE uint16 u16FastPoll;
  ****************************************************************************/
 PUBLIC void APP_vInitialiseNode(void)
 {
-    DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_vInitialiseNode*");
-
-#ifdef DEEP_SLEEP_ENABLE
-    vReloadSleepTimers();
-#endif
-
-#ifdef CLD_OTA
-    vLoadOTAPersistedData();
-#endif
-    /* Restore any application data previously saved to flash */
-    uint16 u16ByteRead;
-    PDM_eReadDataFromRecord(PDM_ID_APP_REMOTE_CONTROL,
-                            &sDeviceDesc,
-                            sizeof(tsDeviceDesc),
-                            &u16ByteRead);
-
-    /* Initialise ZBPro stack */
-    ZPS_vAplSecSetInitialSecurityState(ZPS_ZDO_PRECONFIGURED_LINK_KEY, (uint8 *)&s_au8LnkKeyArray, 0x00, ZPS_APS_GLOBAL_LINK_KEY);
-    DBG_vPrintf(TRACE_SWITCH_NODE, "Set Sec state\n");
-
-    vEZ_RestoreDefaultAIBChMask();
-    /* Initialize ZBPro stack */
-    ZPS_eAplAfInit();
-
-    DBG_vPrintf(TRACE_SWITCH_NODE, "ZPS_eAplAfInit\n");
-    /*Set Save default channel mask as it is going to be manipulated */
-    vEZ_SetDefaultAIBChMask();
-
-    APP_ZCL_vInitialise();
-
-    /* If the device state has been restored from flash, re-start the stack
-     * and set the application running again.
-     */
-    if (sDeviceDesc.eNodeState == E_RUNNING)
-    {
-        /*The following Patch ensures the device will set the address allocate flag will set to FALSE during rejoin in future*/
-        void* pvNwk;
-        pvNwk = ZPS_pvAplZdoGetNwkHandle();
-        ZPS_psNwkNibGetHandle( pvNwk)->sPersist.u8CapabilityInformation &= 0x7f;
-        DBG_vPrintf(TRACE_SWITCH_NODE,"\nThe sNib.sPersist.u8CapabilityInformation = %02x",ZPS_psNwkNibGetHandle( pvNwk)->sPersist.u8CapabilityInformation);
-
-        app_vRestartNode();
-		/* Register callback that will handle ZDP (mgmt) leave requests */
-		ZPS_vAplZdoRegisterZdoLeaveActionCallback(bHandleZdoLeaveRequest);
-		OS_eActivateTask(APP_ZHA_Switch_Task);
-    }
-    else
-    {
-        app_vStartNodeFactoryNew();
-    }
-#ifdef PDM_EEPROM
-    vDisplayPDMUsage();
-#endif
-
-#ifdef CLD_OTA
-	vAppInitOTA();
-#endif
+	uint8 a;
+	vStartStopTimer(APP_ScanTimer, APP_TIME_MS(1000), &a, a);
 }
 /****************************************************************************
  *
@@ -321,8 +269,6 @@ OS_TASK(APP_ZHA_Switch_Task)
 {
     ZPS_tsAfEvent sStackEvent;
     sStackEvent.eType = ZPS_EVENT_NONE;
-	
-	DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_ZHA_Switch_Task... \n");
 
     /*Collect stack Events */
     if ( OS_eCollectMessage(APP_msgZpsEvents, &sStackEvent) == OS_E_OK)
@@ -1260,7 +1206,6 @@ PUBLIC void vStopAllTimers(void)
 {
     vStopTimer(APP_PollTimer);
     vStopTimer(APP_CommissionTimer);
- //   vStopTimer(APP_ButtonsScanTimer);
     vStopTimer(APP_TickTimer);
     vStopTimer(APP_JoinTimer);
     vStopTimer(APP_BackOffTimer);
@@ -1268,6 +1213,7 @@ PUBLIC void vStopAllTimers(void)
     vStopTimer(App_EZFindAndBindTimer);
     vStopTimer(App_ChangeModeTimer);
     vStopTimer(App_PingTimer);
+	vStopTimer(APP_ScanTimer);
 }
 /****************************************************************************
  *
@@ -1340,8 +1286,6 @@ OS_TASK(APP_PollTask)
 {
     uint32 u32PollPeriod = POLL_TIME;
 
-	DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_PollTask... \n");
-
     if(
     #ifdef SLEEP_ENABLE
       !bWatingToSleep() &&
@@ -1368,6 +1312,7 @@ OS_TASK(APP_PollTask)
         {
             DBG_vPrintf(TRACE_SWITCH_NODE, "\nPoll Failed \n", u8PStatus );
         }
+		u8Counts = 0;
     }else if(!bWatingToSleep()) {
 		u8Counts++;
 		DBG_vPrintf(TRACE_SWITCH_NODE, "\nu8Counts=%d\n", u8Counts);
@@ -1375,14 +1320,82 @@ OS_TASK(APP_PollTask)
 		OS_eStartSWTimer(APP_PollTimer, POLL_TIME, NULL);
 		if (200 == u8Counts) {
 			u8Counts = 0;
-			vStopAllTimers();
-            while (PWRM_u16GetActivityCount())
-                PWRM_eFinishActivity();
-            PWRM_vInit(E_AHI_SLEEP_DEEP);
+			vGotoDeepSleep();
 		}
 	}
 }
 
+OS_TASK(APP_ScanTask)
+{
+	DBG_vPrintf(TRACE_SWITCH_NODE, "\nAPP_ScanTask...\n*");
+
+#ifdef DEEP_SLEEP_ENABLE
+		vReloadSleepTimers();
+#endif
+
+#ifdef CLD_OTA
+		vLoadOTAPersistedData();
+#endif
+
+	/* Restore any application data previously saved to flash */
+	uint16 u16ByteRead;
+
+	PDM_eReadDataFromRecord(PDM_ID_APP_REMOTE_CONTROL,
+							&sDeviceDesc,
+							sizeof(tsDeviceDesc),
+							&u16ByteRead);
+	PDM_eReadDataFromRecord(PDM_ID_APP_LIGHT_TABLE,
+							&sDeviceScanDesc,
+							sizeof(tsDeviceDesc),
+							&u16ByteRead);
+	/* Initialise ZBPro stack */
+	ZPS_vAplSecSetInitialSecurityState(ZPS_ZDO_PRECONFIGURED_LINK_KEY, (uint8 *)&s_au8LnkKeyArray, 0x00, ZPS_APS_GLOBAL_LINK_KEY);
+	DBG_vPrintf(TRACE_SWITCH_NODE, "Set Sec state\n");
+
+	vEZ_RestoreDefaultAIBChMask();
+	/* Initialize ZBPro stack */
+	ZPS_eAplAfInit();
+
+	DBG_vPrintf(TRACE_SWITCH_NODE, "ZPS_eAplAfInit\n");
+	/*Set Save default channel mask as it is going to be manipulated */
+	vEZ_SetDefaultAIBChMask();
+
+	APP_ZCL_vInitialise();
+
+	/* If the device state has been restored from flash, re-start the stack
+	 * and set the application running again.
+	 */
+	if (sDeviceDesc.eNodeState == E_RUNNING)
+	{
+		/*The following Patch ensures the device will set the address allocate flag will set to FALSE during rejoin in future*/
+		void* pvNwk;
+		pvNwk = ZPS_pvAplZdoGetNwkHandle();
+		ZPS_psNwkNibGetHandle( pvNwk)->sPersist.u8CapabilityInformation &= 0x7f;
+		DBG_vPrintf(TRACE_SWITCH_NODE,"\nThe sNib.sPersist.u8CapabilityInformation = %02x",ZPS_psNwkNibGetHandle( pvNwk)->sPersist.u8CapabilityInformation);
+
+		app_vRestartNode();
+		/* Register callback that will handle ZDP (mgmt) leave requests */
+		ZPS_vAplZdoRegisterZdoLeaveActionCallback(bHandleZdoLeaveRequest);
+
+		OS_eActivateTask(APP_ZHA_Switch_Task);
+	} else {
+		if (E_RESCAN == sDeviceScanDesc.eNodeState)
+			app_vStartNodeFactoryNew();
+		else
+			vGotoDeepSleep();
+	}
+#ifdef PDM_EEPROM
+	vDisplayPDMUsage();
+#endif
+
+#ifdef CLD_OTA
+	vAppInitOTA();
+#endif
+
+	/* Register callback that will handle ZDP (mgmt) leave requests */
+	ZPS_vAplZdoRegisterZdoLeaveActionCallback(bHandleZdoLeaveRequest);
+
+}
 /****************************************************************************
  *
  * NAME: bIsValidBindingExsisting
@@ -1926,76 +1939,132 @@ PRIVATE teZCL_Status eReportAttribute(
 	return eZCL_ReportAttribute(&sAddress, u16ClusterID, u16AttributeID, u8SrcEndPoint, u8DestEndPoint, hAPduInst);
 }
 
+#define HEAD_LEN 3
+#define CRC_LEN 1
+#define CMD_TYPE_POSITION 3
+#define CMD_POSITION 4
+
 int s_i8RxByte;
-uint8 u8wakeData[] = {0xff, 0x55, 0x08, 0x0a, 0x08, 0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0xe1};
-uint8 u8initData[] = {0xff, 0x55, 0x06, 0x0b, 0x01, 0x00, 0x00, 0x00, 0x02, 0xeb};
-uint8 u8StartJoinData[] = {0xff, 0x55, 0x07, 0x0b, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01, 0xe9};
-uint8 u8StartJoinResponData[] = {0xff, 0x55, 0x0c, 0x0b, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0xe4};
+PRIVATE uint8 checkSum(uint8 *u8Data, uint8 u8length)
+{
+	uint8 i = 2, u8Sum = 0;
+
+	for (; i < u8length - CRC_LEN; i++) {
+		u8Sum += u8Data[i];
+	}
+	u8Sum = ~u8Sum;
+	return u8Sum;
+}
+PRIVATE bool_t checkData(uint8 *u8Data, uint8 u8length)
+{
+	uint8 u8Sum = 0;
+
+	u8Sum = checkSum(u8Data, u8length);
+	DBG_vPrintf(TRACE_SWITCH_NODE, "u8Sum:%d crc:%d\n",u8Sum, u8Data[u8length - CRC_LEN]);
+	if (u8Sum == u8Data[u8length - CRC_LEN]) {
+		return TRUE;
+	}
+	return FALSE;
+}
+
+PRIVATE void vGotoDeepSleep()
+{
+	PDM_vDeleteDataRecord(PDM_ID_APP_LIGHT_TABLE);
+
+	vStopAllTimers();
+
+	while (PWRM_u16GetActivityCount())
+		PWRM_eFinishActivity();
+
+	PWRM_vInit(E_AHI_SLEEP_DEEP);
+}
 
 PRIVATE void vProcessIncomingSerialCommands()
 {
+	static uint16 i;
+	static uint8 u8Len;
 	static bool_t bStartFlag;
-	static uint16 i = 0;
-	static uint8 u8RecData[127]= {0};
+	static uint8 u8RecData[127];
+	uint8 u8CommandType,u8Command;
 
 	if (0xff == s_i8RxByte) {
 		bStartFlag = TRUE;
 	}
 	if (bStartFlag) {
 		u8RecData[i++] = s_i8RxByte;
-		/* not the right data */
-		if (0x55 != u8RecData[1]) {
-			bStartFlag = FALSE;
-			i = 0;
-			return;
+		/* command should start with 0xff, 0x55 */
+		if ((2 == i) && (0x55 != u8RecData[1])) {
+			goto out;
 		}
 	}
-	switch (s_i8RxByte) {
-		case 0xe3:
-			/* door lock is opened, report attribute */
-			DBG_vPrintf(TRACE_SWITCH_NODE, "\nSomeone Open The Door, Report Attribute\n");
-			if (!memcmp(&u8RecData[0], u8wakeData, sizeof(u8wakeData)) -1) {
-				if (sDeviceDesc.eNodeState == E_RUNNING) {
-					eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
-				}
+	if (3 == i)
+		u8Len = u8RecData[2];
+	DBG_vPrintf(TRACE_SWITCH_NODE, "u8Len:%d\n",u8Len);
+	/* read command finished */
+	if ((i == u8Len + HEAD_LEN + CRC_LEN) && (i > HEAD_LEN + CRC_LEN)) {
+		u8CommandType = u8RecData[CMD_TYPE_POSITION];
+		u8Command = u8RecData[CMD_POSITION];
+		DBG_vPrintf(TRACE_SWITCH_NODE, "\nCommandType:0x%02x Command:0x%02x i:%d\n",u8CommandType,u8Command,i);
+		if (!checkData(u8RecData, i)) {
+			DBG_vPrintf(TRACE_SWITCH_NODE, "\ndata check failed\n");
+			goto out;
+		}
+		if (0x0A == u8CommandType) {
+			switch (u8Command) {
+				/* Door is opened, Send Attributes */
+				case 0x08:
+					DBG_vPrintf(TRACE_SWITCH_NODE, "\nSomeone Open The Door, Report Attribute\n");
+					if (sDeviceDesc.eNodeState == E_RUNNING) {
+						/* Respon to door lock */
+						eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
+					}
+					goto out;
+				case 0x20:
+					if (0x00 == u8RecData[i - 2]) {
+						DBG_vPrintf(TRACE_SWITCH_NODE, "\nOpen Door Success,Send Attributes\n");
+						if (sDeviceDesc.eNodeState == E_RUNNING) {
+							eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
+						}
+					} else {
+						DBG_vPrintf(TRACE_SWITCH_NODE, "\nOpen Door Failed\n");
+					}
+					goto out;
+				case 0x21:
+					break;
+				default:break;
 			}
-			i = 0;
-			bStartFlag = FALSE;
-			break;
-		case 0xeb:
-			/* door lock is powerd on, send back data */
-			DBG_vPrintf(TRACE_SWITCH_NODE, "\nDoor Lock Powerd On, Send init data back to lock\n");
-			if (!memcmp(&u8RecData[0], u8initData, sizeof(u8initData)) - 1) {
-				u16AHI_UartBlockWriteData(E_AHI_UART_1, u8initData, sizeof(u8initData));
+		} else if (0x0B == u8CommandType) {
+			switch (u8Command) {
+				case 0x01:
+					DBG_vPrintf(TRACE_SWITCH_NODE, "\ndoor lock powerd on, send data back to lock\n");
+					u16AHI_UartBlockWriteData(E_AHI_UART_1, u8RecData, i);
+					goto out;
+				case 0x03:
+					DBG_vPrintf(TRACE_SWITCH_NODE, "\nStart discovery network\n");
+
+					uint8 u8Respon[] = {0xff, 0x55, 0x0c, 0x0b, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00};
+					memcpy(u8Respon + 5, u8RecData + 5, 4);
+					u8Respon[sizeof(u8Respon) - CRC_LEN] = checkSum(u8Respon, sizeof(u8Respon));
+
+					u16AHI_UartBlockWriteData(E_AHI_UART_1, u8Respon, sizeof(u8Respon));
+
+					PDM_vDeleteAllDataRecords();
+
+					sDeviceScanDesc.eNodeState = E_RESCAN;
+					PDM_eSaveRecordData(PDM_ID_APP_LIGHT_TABLE,
+					    &sDeviceScanDesc,
+					    sizeof(tsDeviceDesc));
+					vAHI_SwReset();
 			}
-			i = 0;
-			bStartFlag = FALSE;
-			break;
-		case 0xce:
-			/* open door return code 0x00 */
-			if (0x00 == u8RecData[i - 2]) {
-				DBG_vPrintf(TRACE_SWITCH_NODE, "\nDoor is opened,Send attributes\n");
-				if (sDeviceDesc.eNodeState == E_RUNNING) {
-					eReportAttribute(GENERAL_CLUSTER_ID_ONOFF, E_CLD_ONOFF_ATTR_ID_ONOFF, 0x01, 0x01);
-				}
-			}
-			i = 0;
-			bStartFlag = FALSE;
-			break;
-		case 0xe9:
-		   /* start join */
-		   if (!memcmp(&u8RecData[0], u8StartJoinData, sizeof(u8StartJoinData)) - 1) {
-				DBG_vPrintf(TRACE_SWITCH_NODE, "\nStart Join\n");
-				u16AHI_UartBlockWriteData(E_AHI_UART_1, u8StartJoinResponData, sizeof(u8StartJoinResponData));
-				PDM_vDeleteAllDataRecords();
-				vAHI_SwReset();
-		   }
-		   i = 0;
-		   bStartFlag = FALSE;
-		   break;
-		default:break;
+		}
 	}
-	if (i == 127) {i = 0;}
+	if (i == 127)
+		i = 0;
+	return;
+out:
+	i = 0;
+	bStartFlag = FALSE;
+	memset(u8RecData, 0x00, sizeof(u8RecData));
 }
 
 /****************************************************************************

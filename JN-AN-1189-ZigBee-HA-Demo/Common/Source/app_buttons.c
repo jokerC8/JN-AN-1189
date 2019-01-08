@@ -109,8 +109,6 @@ OS_ISR(vISR_SystemController)
     uint8 u8WakeInt = u8AHI_WakeTimerFiredStatus();
     u32AHI_DioInterruptStatus();
 
-    DBG_vPrintf(TRACE_APP_BUTTON, "In vISR_SystemController\n");
-
     if (u8WakeInt & E_AHI_WAKE_TIMER_MASK_1)
     {
         /* wake timer interrupt got us here */
