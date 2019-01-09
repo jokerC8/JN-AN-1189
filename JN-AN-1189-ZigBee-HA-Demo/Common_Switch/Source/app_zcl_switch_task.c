@@ -186,8 +186,7 @@ OS_TASK(ZCL_Task)
         vZCL_EventHandler(&sCallBackEvent);
         vDevStateIndication();
         #ifdef SLEEP_ENABLE
-        if( (sDeviceDesc.eNodeState == E_RUNNING) ||
-                (sDeviceDesc.eNodeState == E_REJOINING))
+        if(sDeviceDesc.eNodeState == E_RUNNING)
                 vUpdateKeepAliveTimer();
         #endif
         #ifdef CLD_OTA

@@ -70,7 +70,7 @@ ifeq ($(KEEPALIVETIME),0)
 #no need to do anything as the sleep will not be defined
 else 
 ifeq ($(KEEPALIVETIME),255)
-CFLAGS += -DKEEP_ALIVETIME=1
+CFLAGS += -DKEEP_ALIVETIME=2
 CFLAGS += -DSLEEP_ENABLE
 CFLAGS += -DDEEP_SLEEP_ENABLE
 else

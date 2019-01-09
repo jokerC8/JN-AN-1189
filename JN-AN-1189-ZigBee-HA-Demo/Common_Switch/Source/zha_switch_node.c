@@ -320,8 +320,9 @@ OS_TASK(APP_ZHA_Switch_Task)
             {
                 DBG_vPrintf(TRACE_SWITCH_NODE, "Start join failed tmr 1000\n");
                 vStopAllTimers();
-                OS_eStartSWTimer(APP_TickTimer, ZCL_TICK_TIME, NULL);
                 vStartStopTimer( APP_JoinTimer, APP_TIME_MS(1000),(uint8*)&(sDeviceDesc.eNodeState),E_REJOINING );
+				OS_eStartSWTimer(APP_TickTimer, ZCL_TICK_TIME, NULL);
+				OS_eStartSWTimer(APP_PollTimer, APP_TIME_MS(100), NULL);
                 DBG_vPrintf(TRACE_SWITCH_NODE, "failed join running %02x\n",sStackEvent.uEvent.sNwkJoinFailedEvent.u8Status );
             }
             else if((ZPS_EVENT_APS_DATA_INDICATION == sStackEvent.eType) &&
@@ -1318,9 +1319,16 @@ OS_TASK(APP_PollTask)
 		DBG_vPrintf(TRACE_SWITCH_NODE, "\nu8Counts=%d\n", u8Counts);
 		OS_eStopSWTimer(APP_PollTimer);
 		OS_eStartSWTimer(APP_PollTimer, POLL_TIME, NULL);
-		if (200 == u8Counts) {
-			u8Counts = 0;
-			vGotoDeepSleep();
+		if (sDeviceDesc.eNodeState == E_STARTUP) {
+			if (400 == u8Counts) {
+				u8Counts = 0;
+				vGotoDeepSleep();
+			}
+		} else if (sDeviceDesc.eNodeState == E_REJOINING) {
+			if (200 == u8Counts) {
+				u8Counts = 0;
+				vGotoDeepSleep();
+			}
 		}
 	}
 }
@@ -1751,13 +1759,13 @@ PUBLIC void vAppChangeChannel( void)
 ****************************************************************************/
 PUBLIC void vReloadSleepTimers(void)
 {
-
     vLoadKeepAliveTime(KEEP_ALIVETIME);
     #ifdef DEEP_SLEEP_ENABLE
         vLoadDeepSleepTimer(DEEP_SLEEP_TIME);
     #endif
 }
 #endif
+
 /****************************************************************************
  *
  * NAME: vEZ_EZModeCb
@@ -1861,7 +1869,7 @@ PRIVATE void app_vRestartNode (void)
     ZPS_vSaveAllZpsRecords();
     u16GroupId = thisNib->sPersist.u16NwkAddr;
     /* Start 1 seconds polling */
-    OS_eStartSWTimer(APP_PollTimer,POLL_TIME, NULL);
+    //OS_eStartSWTimer(APP_PollTimer,POLL_TIME, NULL);
 
     /*Rejoin NWK when coming from reset.*/
     ZPS_eAplZdoRejoinNetwork(FALSE);

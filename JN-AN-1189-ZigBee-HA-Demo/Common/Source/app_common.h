@@ -93,7 +93,7 @@
 #define POLL_TIME_ICONTROL      APP_TIME_MS(60000)
 #endif
 
-#define POLL_TIME               APP_TIME_MS(300)
+#define POLL_TIME               APP_TIME_MS(150)
 #define POLL_TIME_FAST          APP_TIME_MS(100)
 #define TEN_HZ_TICK_TIME        APP_TIME_MS(100)
 
