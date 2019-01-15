@@ -214,7 +214,7 @@ PRIVATE uint16 u16FastPoll;
  ****************************************************************************/
 PUBLIC void APP_vInitialiseNode(void)
 {
-	uint8 a;
+	uint8 a = 0;
 	vStartStopTimer(APP_ScanTimer, APP_TIME_MS(1000), &a, a);
 }
 /****************************************************************************
@@ -1267,9 +1267,9 @@ PUBLIC void vWakeCallBack(void)
     DBG_vPrintf(TRACE_SWITCH_NODE, "vWakeCallBack\n");
 
     /*Start Polling*/
-    OS_eStartSWTimer(APP_PollTimer,POLL_TIME, NULL);
+    OS_eStartSWTimer(APP_PollTimer, APP_TIME_MS(10), NULL);
     /*Start the APP_TickTimer to continue the ZCL tasks */
-    OS_eStartSWTimer(APP_TickTimer, ZCL_TICK_TIME, NULL);
+    OS_eStartSWTimer(APP_TickTimer, APP_TIME_MS(10), NULL);
 }
 #endif
 /****************************************************************************
@@ -1318,14 +1318,14 @@ OS_TASK(APP_PollTask)
 		u8Counts++;
 		DBG_vPrintf(TRACE_SWITCH_NODE, "\nu8Counts=%d\n", u8Counts);
 		OS_eStopSWTimer(APP_PollTimer);
-		OS_eStartSWTimer(APP_PollTimer, POLL_TIME, NULL);
+		OS_eStartSWTimer(APP_PollTimer, APP_TIME_MS(1000), NULL);
 		if (sDeviceDesc.eNodeState == E_STARTUP) {
-			if (400 == u8Counts) {
+			if (60 == u8Counts) {
 				u8Counts = 0;
 				vGotoDeepSleep();
 			}
 		} else if (sDeviceDesc.eNodeState == E_REJOINING) {
-			if (200 == u8Counts) {
+			if (30 == u8Counts) {
 				u8Counts = 0;
 				vGotoDeepSleep();
 			}
@@ -1387,8 +1387,10 @@ OS_TASK(APP_ScanTask)
 
 		OS_eActivateTask(APP_ZHA_Switch_Task);
 	} else {
-		if (E_RESCAN == sDeviceScanDesc.eNodeState)
+		if (E_RESCAN == sDeviceScanDesc.eNodeState) {
+			PDM_vDeleteAllDataRecords();
 			app_vStartNodeFactoryNew();
+		}
 		else
 			vGotoDeepSleep();
 	}
@@ -2007,7 +2009,6 @@ PRIVATE void vProcessIncomingSerialCommands()
 	}
 	if (3 == i)
 		u8Len = u8RecData[2];
-	DBG_vPrintf(TRACE_SWITCH_NODE, "u8Len:%d\n",u8Len);
 	/* read command finished */
 	if ((i == u8Len + HEAD_LEN + CRC_LEN) && (i > HEAD_LEN + CRC_LEN)) {
 		u8CommandType = u8RecData[CMD_TYPE_POSITION];
@@ -2088,7 +2089,6 @@ OS_TASK(APP_taskAtParser)
     uint8 u8RxByte;
     if (OS_E_OK == OS_eCollectMessage(APP_msgSerialRx, &u8RxByte)) {
 		s_i8RxByte = u8RxByte;
-		DBG_vPrintf(TRACE_SWITCH_NODE, "\n0x%02x ",s_i8RxByte);
 		vProcessIncomingSerialCommands();
     }
     vAHI_WatchdogRestart();

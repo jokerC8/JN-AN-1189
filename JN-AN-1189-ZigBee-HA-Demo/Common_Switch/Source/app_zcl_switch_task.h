@@ -45,7 +45,7 @@
 /****************************************************************************/
 /***        Macro Definitions                                             ***/
 /****************************************************************************/
-#define ZCL_TICK_TIME           APP_TIME_MS(1000)
+#define ZCL_TICK_TIME           APP_TIME_MS(150)
 #define APP_THRESHOLD_TO_SEND_READ_ATTR   5
 #define APP_THRESHOLD_FORCE_ROUTE_DISCOVERY (APP_THRESHOLD_TO_SEND_READ_ATTR+3)
 /****************************************************************************/
